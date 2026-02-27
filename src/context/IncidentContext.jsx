@@ -57,7 +57,10 @@ export const IncidentProvider = ({ children }) => {
                         userId: data.userName || data.userId || "Mobile App User",
                         userUid: data.userId, // Preserving the raw Auth UID to query subcollections
                         userEmail: data.userEmail || "N/A",
-                        userPhone: data.userPhone || "N/A",
+                        userPhone: data.userPhone || 'Unknown',
+                        userGender: data.userGender || 'Not Provided',
+                        userAge: data.userAge || 'Unknown',
+                        userAddress: data.userAddress || 'Not Provided',
                         address: data.address || "Address not resolved",
                         assignedStationName: data.assignedStationName || "Calculating Jurisdiction...",
                         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),

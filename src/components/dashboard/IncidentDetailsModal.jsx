@@ -96,18 +96,30 @@ function IncidentDetailsModal({ incident, onClose }) {
                             <FileText size={18} className="text-slate-500" />
                             <h3 className="font-semibold text-slate-700">Dispatch Details</h3>
                         </div>
-                        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <p className="text-sm text-slate-500 font-medium mb-1">Reporter ID</p>
-                                <p className="text-slate-800 font-semibold">{incident.userId}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-500 font-medium mb-1">Contact Email</p>
-                                <p className="text-slate-800 font-semibold">{incident.userEmail || 'N/A'}</p>
+                                <p className="text-sm text-slate-500 font-medium mb-1">Victim Name</p>
+                                <p className="text-slate-800 font-bold">{incident.userId}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-slate-500 font-medium mb-1">Phone Number</p>
                                 <p className="text-slate-800 font-semibold">{incident.userPhone || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500 font-medium mb-1">Contact Email</p>
+                                <p className="text-slate-800 font-semibold truncate" title={incident.userEmail}>{incident.userEmail || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500 font-medium mb-1">Gender</p>
+                                <p className="text-slate-800 font-semibold">{incident.userGender || 'Not Provided'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500 font-medium mb-1">Age</p>
+                                <p className="text-slate-800 font-semibold">{incident.userAge || 'Unknown'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500 font-medium mb-1">Home Address</p>
+                                <p className="text-slate-800 font-semibold truncate" title={incident.userAddress}>{incident.userAddress || 'Not Provided'}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-slate-500 font-medium mb-1">Assessed Risk Score</p>
