@@ -154,8 +154,17 @@ function Incidents() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 font-medium text-slate-700">
-                                            {incident.userId}
+                                        <td className="px-6 py-4">
+                                            <div className="font-semibold text-slate-800">{incident.userId}</div>
+                                            <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                                {incident.userPhone && <div>📞 {incident.userPhone}</div>}
+                                                {incident.userEmail && <div className="truncate w-32 md:w-48" title={incident.userEmail}>✉️ {incident.userEmail}</div>}
+                                                {(incident.userGender || incident.userAge) && (
+                                                    <div className="text-slate-600 font-medium">
+                                                        👤 {incident.userGender || 'Unknown'} • {incident.userAge ? `${incident.userAge} yrs` : 'Age N/A'}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             {incident.location ? (
