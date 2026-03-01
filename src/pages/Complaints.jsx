@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FileText, Eye, MapPin, Clock, Tag, User, Phone, PlayCircle, X } from 'lucide-react';
+import { FileText, Eye, MapPin, Clock, Tag, User, Phone, PlayCircle, X, Trash2 } from 'lucide-react';
 
 function Complaints() {
     const [complaints, setComplaints] = useState([]);
@@ -11,8 +11,7 @@ function Complaints() {
     const [activeVideoUrl, setActiveVideoUrl] = useState(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
 
-    // Telegram Bot config to proxy the file down
-    const TELEGRAM_BOT_TOKEN = "8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA";
+    const TELEGRAM_CHAT_ID = "-5182109956"; // Vault Group ID
 
     useEffect(() => {
         const q = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'));
@@ -59,6 +58,37 @@ function Complaints() {
             alert("Network error while trying to fetch video from Telegram.");
         } finally {
             setIsLoadingVideo(false);
+        }
+    };
+
+    const handleDeleteComplaint = async (docId, telegramMessageId) => {
+        if (!window.confirm("Are you sure you want to permanently delete this evidence from the Vault and Telegram records? This cannot be undone.")) {
+            return;
+        }
+
+        try {
+            // 1. Delete from Firestore metadata
+            await deleteDoc(doc(db, 'complaints', docId));
+
+            // 2. Delete the actual video from Telegram Cloud Storage
+            if (telegramMessageId) {
+                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        message_id: telegramMessageId
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.ok) {
+                    console.error("Failed to wipe Telegram video. Document deleted, but Video might remain.", data);
+                }
+            }
+        } catch (error) {
+            console.error("Error destroying evidence:", error);
+            alert("Failed to destroy evidence database records.");
         }
     };
 
@@ -116,17 +146,26 @@ function Complaints() {
                         <div className="bg-slate-50 px-5 py-4 border-t border-slate-200 flex justify-between items-center mt-auto">
                             <span className="text-xs font-mono text-slate-400" title={complaint.userId}>ID: {complaint.userId?.substring(0, 8) || 'Unknown'}</span>
 
-                            <button
-                                onClick={() => handlePlayInlineVideo(complaint.telegramFileId)}
-                                disabled={isLoadingVideo}
-                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                            >
-                                {isLoadingVideo ? (
-                                    <span className="flex items-center gap-2"><span className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span> Buffering...</span>
-                                ) : (
-                                    <><PlayCircle className="w-5 h-5 mr-1.5" /> Play Evidence</>
-                                )}
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleDeleteComplaint(complaint.id, complaint.telegramMessageId)}
+                                    className="inline-flex items-center px-3 py-2 border border-slate-200 text-sm font-semibold rounded-lg shadow-sm text-slate-600 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 focus:outline-none transition-colors"
+                                    title="Erase Details & Video"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handlePlayInlineVideo(complaint.telegramFileId)}
+                                    disabled={isLoadingVideo}
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                >
+                                    {isLoadingVideo ? (
+                                        <span className="flex items-center gap-2"><span className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span> Buffering...</span>
+                                    ) : (
+                                        <><PlayCircle className="w-5 h-5 mr-1.5" /> Play Evidence</>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ))}
