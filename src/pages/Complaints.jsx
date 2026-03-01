@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FileText, Eye, MapPin, Clock, Tag, User, Phone, PlayCircle, X, Trash2 } from 'lucide-react';
+import { FileText, Eye, MapPin, Clock, Tag, User, Phone, PlayCircle, X, Trash2, Shield } from 'lucide-react';
 
 function Complaints() {
     const [complaints, setComplaints] = useState([]);
