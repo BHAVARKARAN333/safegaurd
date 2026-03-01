@@ -8,4 +8,13 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  server: {
+    proxy: {
+      '/api/telegram': {
+        target: 'https://api.telegram.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/telegram/, ''),
+      },
+    },
+  },
 })

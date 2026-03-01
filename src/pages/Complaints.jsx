@@ -40,8 +40,8 @@ function Complaints() {
         setActiveVideoUrl(null);
 
         try {
-            // Step 1: Request the file path from Telegram
-            const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+            // Step 1: Request the file path from Telegram using our local/Vercel CORS proxy
+            const response = await fetch(`/api/telegram/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
             const data = await response.json();
 
             if (data.ok) {
@@ -72,7 +72,7 @@ function Complaints() {
 
             // 2. Delete the actual video from Telegram Cloud Storage
             if (telegramMessageId) {
-                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+                const response = await fetch(`/api/telegram/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
