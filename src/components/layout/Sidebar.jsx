@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Shield, Radio, BarChart2, List, Settings, LogOut } from 'lucide-react';
+import { Shield, Radio, BarChart2, List, Settings, LogOut, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 function Sidebar() {
@@ -47,6 +47,10 @@ function Sidebar() {
 
                 <NavLink to="/analytics" className={navClass}>
                     <BarChart2 size={18} className="mr-3" /> Analytics
+                </NavLink>
+
+                <NavLink to="/complaints" className={navClass}>
+                    <FileText size={18} className="mr-3" /> Evidence Vault
                 </NavLink>
 
                 <NavLink to="/incidents" className={navClass}>

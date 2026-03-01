@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Incidents from './pages/Incidents';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Complaints from './pages/Complaints';
 
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ function App() {
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="incidents" element={<Incidents />} />
                                 <Route path="analytics" element={<Analytics />} />
+                                <Route path="complaints" element={<Complaints />} />
                                 <Route path="settings" element={<Settings />} />
                             </Route>
                             <Route path="*" element={<Navigate to="/" replace />} />
