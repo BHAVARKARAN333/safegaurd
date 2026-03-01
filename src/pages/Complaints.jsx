@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FileText, Eye, MapPin, Clock, Tag } from 'lucide-react';
+import { FileText, Eye, MapPin, Clock, Tag, User, Phone, PlayCircle, X } from 'lucide-react';
 
 function Complaints() {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Video streaming state
+    const [activeVideoUrl, setActiveVideoUrl] = useState(null);
+    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+
+    // Telegram Bot config to proxy the file down
+    const TELEGRAM_BOT_TOKEN = "8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA";
 
     useEffect(() => {
         const q = query(collection(db, 'complaints'), orderBy('createdAt', 'desc'));
@@ -24,16 +31,35 @@ function Complaints() {
         return () => unsubscribe();
     }, []);
 
-    const handleViewEvidence = (telegramMessageId) => {
-        if (!telegramMessageId) {
-            alert("No Telegram Evidence Linked.");
+    const handlePlayInlineVideo = async (fileId) => {
+        if (!fileId) {
+            alert("This evidence relies on an older schema or is missing a Video File ID.");
             return;
         }
-        // Redirecting to Telegram web/desktop client to view the evidence in the private safeguarded group.
-        // We strip the '-' sign if presenting as a typical public link fallback, 
-        // but typically private group links are t.me/c/<id>/<msgId>
-        const chatIdForLink = "5182109956";
-        window.open(`https://t.me/c/${chatIdForLink}/${telegramMessageId}`, '_blank');
+
+        setIsLoadingVideo(true);
+        setActiveVideoUrl(null);
+
+        try {
+            // Step 1: Request the file path from Telegram
+            const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+            const data = await response.json();
+
+            if (data.ok) {
+                // Step 2: Construct the secure Telegram Download URL
+                const filePath = data.result.file_path;
+                const downloadUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+
+                setActiveVideoUrl(downloadUrl);
+            } else {
+                alert("Telegram Stream Error: " + data.description);
+            }
+        } catch (error) {
+            console.error("Failed to fetch stream", error);
+            alert("Network error while trying to fetch video from Telegram.");
+        } finally {
+            setIsLoadingVideo(false);
+        }
     };
 
     if (loading) {
@@ -55,12 +81,12 @@ function Complaints() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {complaints.map(complaint => (
-                    <div key={complaint.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                        <div className="p-5">
+                    <div key={complaint.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                        <div className="p-5 flex-1">
                             <div className="flex justify-between items-start mb-4">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200 uppercase tracking-wider">
                                     <Tag className="w-3 h-3 mr-1" /> {complaint.tag || 'Emergency'}
                                 </span>
                                 <span className="text-xs text-slate-400 flex items-center">
@@ -72,21 +98,34 @@ function Complaints() {
                             <h3 className="text-lg font-semibold text-slate-900 mb-2 truncate">{complaint.title || 'Untitled Report'}</h3>
                             <p className="text-sm text-slate-600 mb-4 line-clamp-3">{complaint.description || 'No description provided.'}</p>
 
-                            <div className="flex items-center text-xs text-slate-500 mb-4">
-                                <MapPin className="w-3.5 h-3.5 mr-1" />
+                            <div className="flex items-center text-xs text-slate-500 mb-2 font-mono bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400" />
                                 {complaint.location ? `Coords: ${complaint.location}` : 'Location Unavailable'}
+                            </div>
+
+                            <div className="flex items-center text-sm text-slate-700 font-medium">
+                                <User className="w-4 h-4 mr-2 text-slate-400" />
+                                {complaint.userName || 'Anonymous User'}
+                            </div>
+                            <div className="flex items-center text-sm text-slate-600 mt-1">
+                                <Phone className="w-4 h-4 mr-2 text-slate-400" />
+                                {complaint.userPhone || 'No Phone Registered'}
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-between items-center">
-                            <span className="text-xs font-medium text-slate-500">ID: {complaint.userId?.substring(0, 8) || 'Unknown'}...</span>
+                        <div className="bg-slate-50 px-5 py-4 border-t border-slate-200 flex justify-between items-center mt-auto">
+                            <span className="text-xs font-mono text-slate-400" title={complaint.userId}>ID: {complaint.userId?.substring(0, 8) || 'Unknown'}</span>
 
                             <button
-                                onClick={() => handleViewEvidence(complaint.telegramMessageId)}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-lg shadow-sm text-white bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-colors"
+                                onClick={() => handlePlayInlineVideo(complaint.telegramFileId)}
+                                disabled={isLoadingVideo}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                             >
-                                <Eye className="w-4 h-4 mr-1.5" />
-                                View Evidence
+                                {isLoadingVideo ? (
+                                    <span className="flex items-center gap-2"><span className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span> Buffering...</span>
+                                ) : (
+                                    <><PlayCircle className="w-5 h-5 mr-1.5" /> Play Evidence</>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -100,6 +139,38 @@ function Complaints() {
                     </div>
                 )}
             </div>
+
+            {/* In-browser Telegram Video Player Modal */}
+            {activeVideoUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl w-full max-w-4xl border border-slate-700 flex flex-col">
+                        <div className="px-4 py-3 bg-slate-800 flex justify-between items-center border-b border-slate-700">
+                            <h3 className="text-white font-semibold flex items-center">
+                                <Shield className="w-5 h-5 mr-2 text-red-400" />
+                                Secure Evidence Channel
+                            </h3>
+                            <button
+                                onClick={() => setActiveVideoUrl(null)}
+                                className="text-slate-400 hover:text-white bg-slate-700 hover:bg-red-500 rounded-full p-1 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="relative bg-black w-full aspect-video flex items-center justify-center">
+                            <video
+                                src={activeVideoUrl}
+                                controls
+                                autoPlay
+                                className="w-full h-full object-contain"
+                                controlsList="nodownload noplaybackrate"
+                                disablePictureInPicture
+                            >
+                                Your browser does not support playing this emergency evidence.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
