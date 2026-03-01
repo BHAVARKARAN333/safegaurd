@@ -11,6 +11,7 @@ function Complaints() {
     const [activeVideoUrl, setActiveVideoUrl] = useState(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
 
+    const TELEGRAM_BOT_TOKEN = "8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA"; // Needed for Proxy
     const TELEGRAM_CHAT_ID = "-5182109956"; // Vault Group ID
 
     useEffect(() => {
