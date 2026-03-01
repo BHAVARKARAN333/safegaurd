@@ -201,9 +201,9 @@ function Complaints() {
                                 src={activeVideoUrl}
                                 controls
                                 autoPlay
-                                className="w-full h-full object-contain"
-                                controlsList="nodownload noplaybackrate"
-                                disablePictureInPicture
+                                preload="metadata"
+                                className="w-full h-full object-contain bg-black"
+                                controlsList="nodownload"
                             >
                                 Your browser does not support playing this emergency evidence.
                             </video>
