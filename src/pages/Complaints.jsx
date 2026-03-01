@@ -182,28 +182,28 @@ function Complaints() {
 
             {/* In-browser Telegram Video Player Modal */}
             {activeVideoUrl && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl w-full max-w-4xl border border-slate-700 flex flex-col">
-                        <div className="px-4 py-3 bg-slate-800 flex justify-between items-center border-b border-slate-700">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 md:p-6 backdrop-blur-sm">
+                    <div className="bg-slate-900 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl w-full max-w-5xl h-[85vh] md:h-[90vh] border border-slate-700 flex flex-col relative">
+                        <div className="px-4 py-3 bg-slate-800 flex justify-between items-center border-b border-slate-700 shrink-0">
                             <h3 className="text-white font-semibold flex items-center">
                                 <Shield className="w-5 h-5 mr-2 text-red-400" />
                                 Secure Evidence Channel
                             </h3>
                             <button
                                 onClick={() => setActiveVideoUrl(null)}
-                                className="text-slate-400 hover:text-white bg-slate-700 hover:bg-red-500 rounded-full p-1 transition-colors"
+                                className="text-slate-400 hover:text-white bg-slate-700 hover:bg-red-500 rounded-full p-1.5 transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="relative bg-black w-full aspect-video flex items-center justify-center">
+                        <div className="w-full flex-1 bg-black relative flex items-center justify-center min-h-0">
                             <video
                                 src={activeVideoUrl}
                                 controls
                                 autoPlay
                                 playsInline
                                 preload="metadata"
-                                className="w-full h-full object-contain bg-black"
+                                className="absolute inset-0 w-full h-full object-contain"
                                 controlsList="nodownload"
                             >
                                 Your browser does not support playing this emergency evidence.
