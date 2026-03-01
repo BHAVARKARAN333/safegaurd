@@ -3,6 +3,10 @@
         {
             "source": "/api/telegram/:match*",
             "destination": "https://api.telegram.org/:match*"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
         }
     ]
 }
