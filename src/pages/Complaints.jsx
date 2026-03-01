@@ -9,7 +9,7 @@ function Complaints() {
 
     // Video streaming state
     const [activeVideoUrl, setActiveVideoUrl] = useState(null);
-    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const [loadingVideoId, setLoadingVideoId] = useState(null);
 
     const TELEGRAM_BOT_TOKEN = "8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA"; // Needed for Proxy
     const TELEGRAM_CHAT_ID = "-5182109956"; // Vault Group ID
@@ -37,7 +37,7 @@ function Complaints() {
             return;
         }
 
-        setIsLoadingVideo(true);
+        setLoadingVideoId(fileId);
         setActiveVideoUrl(null);
 
         try {
@@ -58,7 +58,7 @@ function Complaints() {
             console.error("Failed to fetch stream", error);
             alert("Network error while trying to fetch video from Telegram.");
         } finally {
-            setIsLoadingVideo(false);
+            setLoadingVideoId(null);
         }
     };
 
@@ -157,10 +157,10 @@ function Complaints() {
                                 </button>
                                 <button
                                     onClick={() => handlePlayInlineVideo(complaint.telegramFileId)}
-                                    disabled={isLoadingVideo}
+                                    disabled={loadingVideoId === complaint.telegramFileId}
                                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >
-                                    {isLoadingVideo ? (
+                                    {loadingVideoId === complaint.telegramFileId ? (
                                         <span className="flex items-center gap-2"><span className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span> Buffering...</span>
                                     ) : (
                                         <><PlayCircle className="w-5 h-5 mr-1.5" /> Play Evidence</>
@@ -201,6 +201,7 @@ function Complaints() {
                                 src={activeVideoUrl}
                                 controls
                                 autoPlay
+                                playsInline
                                 preload="metadata"
                                 className="w-full h-full object-contain bg-black"
                                 controlsList="nodownload"
