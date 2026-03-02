@@ -144,7 +144,7 @@ function IncidentDetailsModal({ incident, onClose }) {
                                         <span className="text-xs text-slate-500">Lat: {incident.location?.latitude?.toFixed(6) || 'Unknown'} , Lng: {incident.location?.longitude?.toFixed(6) || 'Unknown'}</span>
                                     </div>
                                     <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=\${incident.location?.latitude},\${incident.location?.longitude}`}
+                                        href={`https://www.google.com/maps/search/?api=1&query=${incident.location?.latitude},${incident.location?.longitude}`}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="text-blue-600 hover:underline font-sans text-xs font-bold whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-md"
@@ -153,6 +153,19 @@ function IncidentDetailsModal({ incident, onClose }) {
                                     </a>
                                 </div>
                             </div>
+
+                            {/* AI Intelligence Block */}
+                            {incident.aiAnalysis && (
+                                <div className="md:col-span-3 mt-2 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">
+                                    <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                        GEMINI AI TACTICAL INTELLIGENCE
+                                    </p>
+                                    <p className="text-sm text-slate-300 leading-relaxed">
+                                        {incident.aiAnalysis}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -243,12 +256,36 @@ function IncidentDetailsModal({ incident, onClose }) {
                         )}
 
                         {/* Audio Evidence List */}
-                        {audioClips.length > 0 && (
-                            <div>
+                        {(audioClips.length > 0 || (incident.audioUrl && incident.audioUrl.startsWith('telegram_file_id:'))) && (
+                            <div className="mt-8">
                                 <div className="flex items-center gap-2 mb-3 text-slate-700 font-semibold">
                                     <Mic size={18} className="text-red-500" /> Audio Intercepts
                                 </div>
                                 <div className="space-y-3">
+                                    {/* Auto Captured Telegram Audio */}
+                                    {incident.audioUrl && incident.audioUrl.startsWith('telegram_file_id:') && (
+                                        <div className="bg-[#229ED9]/10 border text-sm border-[#229ED9]/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-[#229ED9]/50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-[#229ED9] flex items-center justify-center text-white flex-shrink-0">
+                                                    <Mic size={18} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-slate-800 truncate">Auto-Captured SOS Ambient Audio</p>
+                                                    <p className="text-[11px] text-[#229ED9] font-bold mt-0.5 tracking-wider">TELEGRAM SECURE STREAM</p>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={`tg://resolve?domain=safeguard_bot`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-4 py-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-xs font-bold rounded-lg shadow whitespace-nowrap"
+                                            >
+                                                ▶ PLAY SECURE STREAM
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Web Audio Evidence */}
                                     {audioClips.map(audio => (
                                         <div key={audio.id} className="bg-white border text-sm border-slate-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-slate-300 transition-colors">
                                             <div className="flex items-center gap-3">

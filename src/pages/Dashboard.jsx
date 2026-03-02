@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useIncidents } from '../context/IncidentContext';
 import MapView from '../components/dashboard/MapView';
-import { Camera, X } from 'lucide-react';
+import { Camera, X, FileText } from 'lucide-react';
+import IncidentDetailsModal from '../components/dashboard/IncidentDetailsModal';
 
 function EvidenceModal({ imageUrl, onClose }) {
     if (!imageUrl) return null;
@@ -54,6 +55,7 @@ function Dashboard() {
     const [focusedIncident, setFocusedIncident] = React.useState(null);
     const [evidenceModalOpen, setEvidenceModalOpen] = useState(false);
     const [currentEvidenceUrl, setCurrentEvidenceUrl] = useState(null);
+    const [selectedIncidentForDetails, setSelectedIncidentForDetails] = useState(null);
 
     if (loading) {
         return <div className="h-full flex items-center justify-center text-slate-500 font-medium">Establishing Satellite Uplink...</div>;
@@ -86,6 +88,14 @@ function Dashboard() {
                 <EvidenceModal
                     imageUrl={currentEvidenceUrl}
                     onClose={() => setEvidenceModalOpen(false)}
+                />
+            )}
+
+            {/* Details Modal */}
+            {selectedIncidentForDetails && (
+                <IncidentDetailsModal
+                    incident={selectedIncidentForDetails}
+                    onClose={() => setSelectedIncidentForDetails(null)}
                 />
             )}
 
@@ -198,41 +208,17 @@ function Dashboard() {
                                                     Open Live Google Map 📍
                                                 </a>
 
-                                                {/* Auto-Captured Evidence Action */}
-                                                {inc.evidenceUrl && (
-                                                    <button
-                                                        onClick={(e) => handleOpenEvidence(e, inc.evidenceUrl)}
-                                                        className="w-full flex justify-center items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer"
-                                                    >
-                                                        <Camera size={12} className="text-red-400" />
-                                                        View Hardware Evidence
-                                                    </button>
-                                                )}
-
-                                                {/* Audio Stream Action */}
-                                                {inc.audioUrl && inc.audioUrl.startsWith('telegram_file_id:') && (
-                                                    <a
-                                                        href={`tg://resolve?domain=safeguard_bot`} // App link to Telegram
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer mt-2"
-                                                    >
-                                                        ▶ Play Telegram Audio Stream
-                                                    </a>
-                                                )}
-
-                                                {/* AI Intelligence Block */}
-                                                {inc.aiAnalysis && (
-                                                    <div className="mt-2 p-2 bg-slate-800 rounded-lg border border-slate-700">
-                                                        <p className="text-[10px] font-bold text-blue-400 mb-1 flex items-center gap-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                                                            GEMINI AI INTELLIGENCE
-                                                        </p>
-                                                        <p className="text-[11px] text-slate-300 leading-snug">
-                                                            {inc.aiAnalysis}
-                                                        </p>
-                                                    </div>
-                                                )}
+                                                {/* View Details Action */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedIncidentForDetails(inc);
+                                                    }}
+                                                    className="w-full flex justify-center items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer mt-1"
+                                                >
+                                                    <FileText size={12} className="text-slate-300" />
+                                                    View Incident Details & Evidence
+                                                </button>
                                             </div>
                                         </div>
                                     )}
