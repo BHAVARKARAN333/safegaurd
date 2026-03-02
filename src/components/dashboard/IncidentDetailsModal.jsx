@@ -256,13 +256,29 @@ function IncidentDetailsModal({ incident, onClose }) {
                         )}
 
                         {/* Audio Evidence List */}
-                        {(audioClips.length > 0 || (incident.audioUrl && incident.audioUrl.startsWith('telegram_file_id:'))) && (
+                        {(audioClips.length > 0 || incident.audioUrl) && (
                             <div className="mt-8">
                                 <div className="flex items-center gap-2 mb-3 text-slate-700 font-semibold">
                                     <Mic size={18} className="text-red-500" /> Audio Intercepts
                                 </div>
                                 <div className="space-y-3">
-                                    {/* Auto Captured Telegram Audio */}
+                                    {/* Direct Cloud Audio Stream (Firebase) */}
+                                    {incident.audioUrl && incident.audioUrl.startsWith('https://') && (
+                                        <div className="bg-red-50 border text-sm border-red-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-red-300 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
+                                                    <Mic size={18} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-slate-800 truncate">Live SOS Ambient Audio</p>
+                                                    <p className="text-[11px] text-red-600 font-bold mt-0.5 tracking-wider">SECURE CLOUD STREAM</p>
+                                                </div>
+                                            </div>
+                                            <audio controls src={incident.audioUrl} className="h-10 w-full sm:w-64 flex-shrink-0" />
+                                        </div>
+                                    )}
+
+                                    {/* Fallback Telegram Audio (Old entries) */}
                                     {incident.audioUrl && incident.audioUrl.startsWith('telegram_file_id:') && (
                                         <div className="bg-[#229ED9]/10 border text-sm border-[#229ED9]/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-[#229ED9]/50 transition-colors">
                                             <div className="flex items-center gap-3">
