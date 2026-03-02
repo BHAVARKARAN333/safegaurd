@@ -167,8 +167,8 @@ function Dashboard() {
                                         <div className="flex gap-2 items-center">
                                             {inc.riskScore && (
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${inc.riskScore >= 8 ? 'bg-red-600 text-white animate-pulse' :
-                                                        inc.riskScore >= 5 ? 'bg-orange-500 text-white' :
-                                                            'bg-slate-300 text-slate-800'
+                                                    inc.riskScore >= 5 ? 'bg-orange-500 text-white' :
+                                                        'bg-slate-300 text-slate-800'
                                                     }`}>
                                                     RISK: {inc.riskScore}/10
                                                 </span>
@@ -209,6 +209,18 @@ function Dashboard() {
                                                     </button>
                                                 )}
 
+                                                {/* Audio Stream Action */}
+                                                {inc.audioUrl && inc.audioUrl.startsWith('telegram_file_id:') && (
+                                                    <a
+                                                        href={`tg://resolve?domain=safeguard_bot`} // App link to Telegram
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer mt-2"
+                                                    >
+                                                        ▶ Play Telegram Audio Stream
+                                                    </a>
+                                                )}
+
                                                 {/* AI Intelligence Block */}
                                                 {inc.aiAnalysis && (
                                                     <div className="mt-2 p-2 bg-slate-800 rounded-lg border border-slate-700">
@@ -219,18 +231,6 @@ function Dashboard() {
                                                         <p className="text-[11px] text-slate-300 leading-snug">
                                                             {inc.aiAnalysis}
                                                         </p>
-                                                        {inc.audioUrl && inc.audioUrl.startsWith('telegram_file_id:') && (
-                                                            <div className="mt-2 pt-2 border-t border-slate-700">
-                                                                <a
-                                                                    href={`tg://resolve?domain=safeguard_bot`} // App link to Telegram
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer"
-                                                                >
-                                                                    ▶ Play Telegram Audio Stream
-                                                                </a>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 )}
                                             </div>
