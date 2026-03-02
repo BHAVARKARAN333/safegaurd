@@ -130,8 +130,20 @@ function Complaints() {
                             <p className="text-sm text-slate-600 mb-4 line-clamp-3">{complaint.description || 'No description provided.'}</p>
 
                             <div className="flex items-center text-xs text-slate-500 mb-2 font-mono bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                                {complaint.location ? `Coords: ${complaint.location}` : 'Location Unavailable'}
+                                <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                                {complaint.location ? (
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="truncate pr-2">{complaint.location}</span>
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(complaint.location)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center text-blue-600 hover:text-blue-800 font-semibold underline shrink-0 whitespace-nowrap"
+                                        >
+                                            View Map ↗
+                                        </a>
+                                    </div>
+                                ) : 'Location Unavailable'}
                             </div>
 
                             <div className="flex items-center text-sm text-slate-700 font-medium">
