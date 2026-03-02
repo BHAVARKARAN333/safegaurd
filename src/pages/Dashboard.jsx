@@ -67,6 +67,9 @@ function Dashboard() {
         if (filter === 'Active') return inc.status === 'Active' || inc.status === 'Assigned';
         if (filter === 'Resolved') return inc.status === 'Resolved';
         return true;
+    }).sort((a, b) => {
+        // Sort highest risk score first
+        return (b.riskScore || 0) - (a.riskScore || 0);
     });
 
     const handleOpenEvidence = (e, url) => {
@@ -161,10 +164,20 @@ function Dashboard() {
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <p className="font-bold text-slate-800 text-sm">#{inc.id.slice(-6).toUpperCase()}</p>
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${inc.status === 'Active' ? 'bg-red-100 text-red-700' :
-                                            inc.status === 'Assigned' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-emerald-100 text-emerald-700'
-                                            }`}>{inc.status}</span>
+                                        <div className="flex gap-2 items-center">
+                                            {inc.riskScore && (
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${inc.riskScore >= 8 ? 'bg-red-600 text-white animate-pulse' :
+                                                        inc.riskScore >= 5 ? 'bg-orange-500 text-white' :
+                                                            'bg-slate-300 text-slate-800'
+                                                    }`}>
+                                                    RISK: {inc.riskScore}/10
+                                                </span>
+                                            )}
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${inc.status === 'Active' ? 'bg-red-100 text-red-700' :
+                                                inc.status === 'Assigned' ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-emerald-100 text-emerald-700'
+                                                }`}>{inc.status}</span>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-slate-600 font-medium mb-1">Reporter: {inc.userId || 'Anonymous'}</p>
 
@@ -192,8 +205,33 @@ function Dashboard() {
                                                         className="w-full flex justify-center items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer"
                                                     >
                                                         <Camera size={12} className="text-red-400" />
-                                                        View Evidence
+                                                        View Hardware Evidence
                                                     </button>
+                                                )}
+
+                                                {/* AI Intelligence Block */}
+                                                {inc.aiAnalysis && (
+                                                    <div className="mt-2 p-2 bg-slate-800 rounded-lg border border-slate-700">
+                                                        <p className="text-[10px] font-bold text-blue-400 mb-1 flex items-center gap-1">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                                                            GEMINI AI INTELLIGENCE
+                                                        </p>
+                                                        <p className="text-[11px] text-slate-300 leading-snug">
+                                                            {inc.aiAnalysis}
+                                                        </p>
+                                                        {inc.audioUrl && inc.audioUrl.startsWith('telegram_file_id:') && (
+                                                            <div className="mt-2 pt-2 border-t border-slate-700">
+                                                                <a
+                                                                    href={`tg://resolve?domain=safeguard_bot`} // App link to Telegram
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="w-full flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold py-1.5 rounded transition-colors shadow-sm cursor-pointer"
+                                                                >
+                                                                    ▶ Play Telegram Audio Stream
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

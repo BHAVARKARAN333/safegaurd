@@ -68,7 +68,9 @@ export const IncidentProvider = ({ children }) => {
                         status: normalizedStatus,
                         riskScore: data.riskScore || 5,
                         evidenceUrl: data.evidenceUrl || null,
-                        evidenceUrlBack: data.evidenceUrlBack || null
+                        evidenceUrlBack: data.evidenceUrlBack || null,
+                        audioUrl: data.audioUrl || null,
+                        aiAnalysis: data.aiAnalysis || null
                     };
                 });
 
