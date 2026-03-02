@@ -9,6 +9,10 @@ function IncidentDetailsModal({ incident, onClose }) {
     const [contacts, setContacts] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Telegram direct stream states 
+    const [telegramAudioStream, setTelegramAudioStream] = useState(null);
+    const [fetchingStream, setFetchingStream] = useState(false);
+
     useEffect(() => {
         if (!incident) return;
 
@@ -52,6 +56,27 @@ function IncidentDetailsModal({ incident, onClose }) {
         };
 
         fetchEvidence();
+    }, [incident]);
+
+    // Fetch Telegram Stream URL dynamically if it's a telegram audio
+    useEffect(() => {
+        if (incident?.audioUrl && incident.audioUrl.startsWith('telegram_file_id:')) {
+            const fileId = incident.audioUrl.split(':')[1];
+            setFetchingStream(true);
+            const botToken = '8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA';
+
+            fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok && data.result?.file_path) {
+                        setTelegramAudioStream(`https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch Telegram stream:", err))
+                .finally(() => setFetchingStream(false));
+        } else {
+            setTelegramAudioStream(null);
+        }
     }, [incident]);
 
     if (!incident) return null;
@@ -278,7 +303,7 @@ function IncidentDetailsModal({ incident, onClose }) {
                                         </div>
                                     )}
 
-                                    {/* Fallback Telegram Audio (Old entries) */}
+                                    {/* Telegram Audio (Direct API Fetch) */}
                                     {incident.audioUrl && incident.audioUrl.startsWith('telegram_file_id:') && (
                                         <div className="bg-[#229ED9]/10 border text-sm border-[#229ED9]/30 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-[#229ED9]/50 transition-colors">
                                             <div className="flex items-center gap-3">
@@ -286,17 +311,26 @@ function IncidentDetailsModal({ incident, onClose }) {
                                                     <Mic size={18} />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="font-semibold text-slate-800 truncate">Archived SOS Audio (Pre-Update)</p>
-                                                    <p className="text-[11px] text-[#229ED9] font-bold mt-0.5 tracking-wider">CANNOT PLAY DIRECTLY ON WEB</p>
+                                                    <p className="font-semibold text-slate-800 truncate">Live SOS Ambient Audio</p>
+                                                    <p className="text-[11px] text-[#229ED9] font-bold mt-0.5 tracking-wider">SECURE TELEGRAM STREAM</p>
                                                 </div>
                                             </div>
-                                            <a
-                                                href={`tg://resolve?domain=safeguard_bot`}
-                                                rel="noopener noreferrer"
-                                                className="px-4 py-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold rounded-lg shadow whitespace-nowrap text-center"
-                                            >
-                                                ▶ OPEN IN TELEGRAM APP
-                                            </a>
+
+                                            {telegramAudioStream ? (
+                                                <audio controls src={telegramAudioStream} className="h-10 w-full sm:w-64 flex-shrink-0" autoPlay={false} />
+                                            ) : fetchingStream ? (
+                                                <div className="text-xs text-slate-500 font-bold px-4 py-2 flex items-center gap-2">
+                                                    <Loader2 size={14} className="animate-spin text-[#229ED9]" /> DECRYPTING STREAM...
+                                                </div>
+                                            ) : (
+                                                <a
+                                                    href={`tg://resolve?domain=safeguard_bot`}
+                                                    rel="noopener noreferrer"
+                                                    className="px-4 py-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold rounded-lg shadow whitespace-nowrap text-center"
+                                                >
+                                                    ▶ OPEN IN TELEGRAM APP
+                                                </a>
+                                            )}
                                         </div>
                                     )}
 
