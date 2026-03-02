@@ -286,17 +286,16 @@ function IncidentDetailsModal({ incident, onClose }) {
                                                     <Mic size={18} />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="font-semibold text-slate-800 truncate">Auto-Captured SOS Ambient Audio</p>
-                                                    <p className="text-[11px] text-[#229ED9] font-bold mt-0.5 tracking-wider">TELEGRAM SECURE STREAM</p>
+                                                    <p className="font-semibold text-slate-800 truncate">Archived SOS Audio (Pre-Update)</p>
+                                                    <p className="text-[11px] text-[#229ED9] font-bold mt-0.5 tracking-wider">CANNOT PLAY DIRECTLY ON WEB</p>
                                                 </div>
                                             </div>
                                             <a
                                                 href={`tg://resolve?domain=safeguard_bot`}
-                                                target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="px-4 py-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-xs font-bold rounded-lg shadow whitespace-nowrap"
+                                                className="px-4 py-2 bg-[#229ED9] hover:bg-[#1E8CC0] text-white text-[11px] font-bold rounded-lg shadow whitespace-nowrap text-center"
                                             >
-                                                ▶ PLAY SECURE STREAM
+                                                ▶ OPEN IN TELEGRAM APP
                                             </a>
                                         </div>
                                     )}
