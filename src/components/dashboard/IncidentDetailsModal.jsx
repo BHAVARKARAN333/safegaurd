@@ -106,8 +106,15 @@ function IncidentDetailsModal({ incident, onClose }) {
             let finalSummary = "";
             let newRiskScore = incident.riskScore || 6;
 
-            const audioUrlToFetch = telegramAudioStream || incident.audioUrl || (audioClips.length > 0 ? audioClips[0].fileUrl : null);
+            // Filter out placeholder unresolvable URIs to prevent fetch crashing
+            const rawIncidentAudio = (incident.audioUrl && !incident.audioUrl.startsWith('telegram_file_id:')) ? incident.audioUrl : null;
+            const audioUrlToFetch = telegramAudioStream || rawIncidentAudio || (audioClips.length > 0 ? audioClips[0].fileUrl : null);
 
+            if (!audioUrlToFetch && fetchingStream) {
+                toast.error("Still decrypting audio stream... Please wait 2 seconds and try again.", { id: toastId });
+                setIsAnalyzing(false);
+                return;
+            }
             if (audioUrlToFetch) {
                 toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
 
