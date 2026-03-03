@@ -112,9 +112,15 @@ function IncidentDetailsModal({ incident, onClose }) {
                 toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
 
                 try {
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrlToFetch)}`;
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error("Failed to download audio for Gemini");
+                    // Directly fetch using the browser fetch (assuming Firebase Storage or Telegram proxy allows it)
+                    // We'll use a safer CORS proxy that doesn't mess up binary streams
+                    let fetchUrl = audioUrlToFetch;
+                    if (audioUrlToFetch.includes('telegram')) {
+                        fetchUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrlToFetch)}`;
+                    }
+
+                    const response = await fetch(fetchUrl);
+                    if (!response.ok) throw new Error("Audio download failed");
                     const blob = await response.blob();
 
                     const base64Audio = await new Promise((resolve) => {
@@ -127,12 +133,23 @@ function IncidentDetailsModal({ incident, onClose }) {
                         reader.readAsDataURL(blob);
                     });
 
-                    const prompt = `You are an elite Police Tactical Dispatch AI. You must analyze the following emergency SOS audio. Focus on: Is someone screaming? Are there words like 'help', 'bachao', 'chhod do'? Is there a commotion/fight? Provide a short 3-sentence tactical summary of what's happening. Then on a new line output STRICTLY exactly like this: "RISK_SCORE: X" where X is a number from 1 to 10 (10 being extreme fatal danger, 1 being false alarm).`;
+                    // Explicit prompt requiring exact format
+                    const prompt = `You are a Police Tactical Dispatch AI analyzing emergency SOS audio.
+Focus on: Voice pitch, screams, distress words ('help', 'bachao', 'chhod', 'police', etc.), background commotion.
+Task 1: Write a short 2-3 sentence summary of the danger level.
+Task 2: MUST END YOUR RESPONSE WITH THE EXACT STRING "RISK_SCORE: [NUMBER]" where [NUMBER] is a risk rating from 1 to 10. (Example: RISK_SCORE: 9)
+Do not format Task 2 with bolding or markdown.`;
+
+                    // We ensure mimeType is always acceptable by Gemini API (it likes mp3, wav, aac)
+                    let forcedMimeType = blob.type;
+                    if (!forcedMimeType || forcedMimeType === 'application/octet-stream') {
+                        forcedMimeType = 'audio/mp3'; // Fallback
+                    }
 
                     const result = await model.generateContent([
                         {
                             inlineData: {
-                                mimeType: blob.type && blob.type !== 'application/octet-stream' ? blob.type : 'audio/mp3',
+                                mimeType: forcedMimeType,
                                 data: base64Audio
                             }
                         },
@@ -140,29 +157,35 @@ function IncidentDetailsModal({ incident, onClose }) {
                     ]);
 
                     const responseText = result.response.text();
+                    console.log("Gemini Raw Response:", responseText);
 
                     const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
                     if (riskMatch) {
                         newRiskScore = parseInt(riskMatch[1], 10);
+                        // Make sure score is within bounds
+                        if (newRiskScore > 10) newRiskScore = 10;
+                        if (newRiskScore < 1) newRiskScore = 1;
                     } else {
-                        newRiskScore = 8;
+                        // Intelligent fallback parsing if it forgot the format
+                        if (responseText.toLowerCase().includes('scream') || responseText.toLowerCase().includes('help')) newRiskScore = 9;
+                        else newRiskScore = 8;
                     }
 
-                    finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').trim();
+                    finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').replace(/\*/g, '').trim();
                 } catch (e) {
-                    console.error("Audio processing failed, falling back to basic Gemini analysis", e);
-                    finalSummary = "WARNING: Audio processing failed or blocked by CORS. However, an audio file is present indicating a potentially high-risk situation.";
+                    console.error("Audio processing failed:", e);
+                    finalSummary = `WARNING: AI audio streaming verification failed. File format might be unsupported or blocked by CORS. However, an audio file stream is present. Manual verification required.`;
                     newRiskScore = 8;
                 }
             } else {
                 toast.loading(`Evaluating metadata payload without media streams...`, { id: toastId });
-                const prompt = `You are a Police AI analyzing an SOS incident without any audio or photo. Generate a 2 sentence summary instructing dispatchers to try securing the target and verifying the contact. Output "RISK_SCORE: 6" at the end.`;
+                const prompt = `You are a Police AI analyzing an SOS incident (no audio/photo provided). Generate a 2 sentence summary instructing dispatchers to try securing the target and verifying the contact. Output "RISK_SCORE: 6" at the end.`;
                 const result = await model.generateContent(prompt);
 
                 const responseText = result.response.text();
                 const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
                 if (riskMatch) newRiskScore = parseInt(riskMatch[1], 10);
-                finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').trim();
+                finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').replace(/\*/g, '').trim();
             }
 
             const incidentRef = doc(db, 'incidents', incident.id);
