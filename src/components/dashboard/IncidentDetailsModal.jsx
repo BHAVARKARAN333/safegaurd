@@ -112,15 +112,14 @@ function IncidentDetailsModal({ incident, onClose }) {
                 toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
 
                 try {
-                    // Directly fetch using the browser fetch (assuming Firebase Storage or Telegram proxy allows it)
-                    // We'll use a safer CORS proxy that doesn't mess up binary streams
+                    // We use allorigins raw proxy to bypass CORS safely since we now have the real Telegram URL
                     let fetchUrl = audioUrlToFetch;
                     if (audioUrlToFetch.includes('telegram')) {
-                        fetchUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrlToFetch)}`;
+                        fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrlToFetch)}`;
                     }
 
                     const response = await fetch(fetchUrl);
-                    if (!response.ok) throw new Error("Audio download failed");
+                    if (!response.ok) throw new Error("Audio download failed from proxy");
                     const blob = await response.blob();
 
                     const base64Audio = await new Promise((resolve) => {
