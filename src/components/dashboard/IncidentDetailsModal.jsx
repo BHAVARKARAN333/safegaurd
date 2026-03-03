@@ -112,14 +112,15 @@ function IncidentDetailsModal({ incident, onClose }) {
                 toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
 
                 try {
-                    // We use allorigins raw proxy to bypass CORS safely since we now have the real Telegram URL
+                    // Use Vite's internal development proxy (/api/telegram) to bypass CORS reliably
+                    // without relying on 3rd-party proxies that destroy binary blobs
                     let fetchUrl = audioUrlToFetch;
-                    if (audioUrlToFetch.includes('telegram')) {
-                        fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrlToFetch)}`;
+                    if (audioUrlToFetch.includes('api.telegram.org')) {
+                        fetchUrl = audioUrlToFetch.replace('https://api.telegram.org', '/api/telegram');
                     }
 
                     const response = await fetch(fetchUrl);
-                    if (!response.ok) throw new Error("Audio download failed from proxy");
+                    if (!response.ok) throw new Error("Audio download failed from local proxy");
                     const blob = await response.blob();
 
                     const base64Audio = await new Promise((resolve) => {
