@@ -308,16 +308,14 @@ function IncidentDetailsModal({ incident, onClose }) {
                                 )}
                             </h3>
 
-                            {!incident.aiAnalysis && (
-                                <button
-                                    onClick={handleAnalyzeEvidence}
-                                    disabled={isAnalyzing}
-                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-colors"
-                                >
-                                    {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                                    {isAnalyzing ? "ANALYZING EVIDENCE..." : "ANALYZE WITH AI"}
-                                </button>
-                            )}
+                            <button
+                                onClick={handleAnalyzeEvidence}
+                                disabled={isAnalyzing}
+                                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-colors"
+                            >
+                                {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                                {isAnalyzing ? "ANALYZING EVIDENCE..." : (incident.aiAnalysis ? "RE-ANALYZE WITH AI" : "ANALYZE WITH AI")}
+                            </button>
                         </div>
 
                         {!loading && evidence.length === 0 && !incident.evidenceUrl && (
