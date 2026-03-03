@@ -92,7 +92,8 @@ function IncidentDetailsModal({ incident, onClose }) {
         const toastId = toast.loading("Gemini AI is fetching and decrypting media for processing...", { duration: 15000 });
 
         try {
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            // Hardcoding for Hackathon Live Demo temporarily
+            const apiKey = 'AIzaSyDkJmeE2hCBwn2j5t-F_UL9KqKtCKDDufQ';
             if (!apiKey) {
                 toast.error("VITE_GEMINI_API_KEY is missing from environment variables!", { id: toastId });
                 setIsAnalyzing(false);
