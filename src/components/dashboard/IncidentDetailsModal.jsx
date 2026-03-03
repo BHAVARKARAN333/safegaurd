@@ -66,14 +66,10 @@ function IncidentDetailsModal({ incident, onClose }) {
             const botToken = '8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA';
             const telegramApiUrl = `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`;
 
-            // Use a CORS proxy to bypass browser CORS restriction on Telegram API
-            const proxiedUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(telegramApiUrl)}`;
-
-            fetch(proxiedUrl)
+            // Telegram API natively supports CORS, fetch directly
+            fetch(telegramApiUrl)
                 .then(res => res.json())
-                .then(proxyData => {
-                    // allorigins wraps the response in { contents: "..." }
-                    const data = JSON.parse(proxyData.contents);
+                .then(data => {
                     if (data.ok && data.result?.file_path) {
                         setTelegramAudioStream(`https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`);
                     }
@@ -120,15 +116,11 @@ function IncidentDetailsModal({ incident, onClose }) {
                 toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
 
                 try {
-                    // Use Vite's internal development proxy (/api/telegram) to bypass CORS reliably
-                    // without relying on 3rd-party proxies that destroy binary blobs
-                    let fetchUrl = audioUrlToFetch;
-                    if (audioUrlToFetch.includes('api.telegram.org')) {
-                        fetchUrl = audioUrlToFetch.replace('https://api.telegram.org', '/api/telegram');
-                    }
+                    // Telegram API natively supports CORS, fetch directly without proxy rewrite
+                    const fetchUrl = audioUrlToFetch;
 
                     const response = await fetch(fetchUrl);
-                    if (!response.ok) throw new Error("Audio download failed from local proxy");
+                    if (!response.ok) throw new Error("Audio download failed from source");
                     const blob = await response.blob();
 
                     const base64Audio = await new Promise((resolve) => {
