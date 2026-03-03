@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { X, Image as ImageIcon, Mic, FileText, Loader2 } from 'lucide-react';
+import { X, Image as ImageIcon, Mic, FileText, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function IncidentDetailsModal({ incident, onClose }) {
@@ -64,10 +64,16 @@ function IncidentDetailsModal({ incident, onClose }) {
             const fileId = incident.audioUrl.split(':')[1];
             setFetchingStream(true);
             const botToken = '8751648356:AAEjygPc1NyRk4TGI51-wrRkqpJ3tXOPVjA';
+            const telegramApiUrl = `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`;
 
-            fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`)
+            // Use a CORS proxy to bypass browser CORS restriction on Telegram API
+            const proxiedUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(telegramApiUrl)}`;
+
+            fetch(proxiedUrl)
                 .then(res => res.json())
-                .then(data => {
+                .then(proxyData => {
+                    // allorigins wraps the response in { contents: "..." }
+                    const data = JSON.parse(proxyData.contents);
                     if (data.ok && data.result?.file_path) {
                         setTelegramAudioStream(`https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`);
                     }
@@ -78,6 +84,101 @@ function IncidentDetailsModal({ incident, onClose }) {
             setTelegramAudioStream(null);
         }
     }, [incident]);
+
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const handleAnalyzeEvidence = async () => {
+        setIsAnalyzing(true);
+        const toastId = toast.loading("Gemini AI is fetching and decrypting media for processing...", { duration: 15000 });
+
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) {
+                toast.error("VITE_GEMINI_API_KEY is missing from environment variables!", { id: toastId });
+                setIsAnalyzing(false);
+                return;
+            }
+
+            const { GoogleGenerativeAI } = await import('@google/generative-ai');
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            let finalSummary = "";
+            let newRiskScore = incident.riskScore || 6;
+
+            const audioUrlToFetch = telegramAudioStream || incident.audioUrl || (audioClips.length > 0 ? audioClips[0].fileUrl : null);
+
+            if (audioUrlToFetch) {
+                toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
+
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrlToFetch)}`;
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error("Failed to download audio for Gemini");
+                    const blob = await response.blob();
+
+                    const base64Audio = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const result = reader.result;
+                            const base64 = result.split(',')[1];
+                            resolve(base64);
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+
+                    const prompt = `You are an elite Police Tactical Dispatch AI. You must analyze the following emergency SOS audio. Focus on: Is someone screaming? Are there words like 'help', 'bachao', 'chhod do'? Is there a commotion/fight? Provide a short 3-sentence tactical summary of what's happening. Then on a new line output STRICTLY exactly like this: "RISK_SCORE: X" where X is a number from 1 to 10 (10 being extreme fatal danger, 1 being false alarm).`;
+
+                    const result = await model.generateContent([
+                        {
+                            inlineData: {
+                                mimeType: blob.type && blob.type !== 'application/octet-stream' ? blob.type : 'audio/mp3',
+                                data: base64Audio
+                            }
+                        },
+                        prompt
+                    ]);
+
+                    const responseText = result.response.text();
+
+                    const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
+                    if (riskMatch) {
+                        newRiskScore = parseInt(riskMatch[1], 10);
+                    } else {
+                        newRiskScore = 8;
+                    }
+
+                    finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').trim();
+                } catch (e) {
+                    console.error("Audio processing failed, falling back to basic Gemini analysis", e);
+                    finalSummary = "WARNING: Audio processing failed or blocked by CORS. However, an audio file is present indicating a potentially high-risk situation.";
+                    newRiskScore = 8;
+                }
+            } else {
+                toast.loading(`Evaluating metadata payload without media streams...`, { id: toastId });
+                const prompt = `You are a Police AI analyzing an SOS incident without any audio or photo. Generate a 2 sentence summary instructing dispatchers to try securing the target and verifying the contact. Output "RISK_SCORE: 6" at the end.`;
+                const result = await model.generateContent(prompt);
+
+                const responseText = result.response.text();
+                const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
+                if (riskMatch) newRiskScore = parseInt(riskMatch[1], 10);
+                finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').trim();
+            }
+
+            const incidentRef = doc(db, 'incidents', incident.id);
+            await updateDoc(incidentRef, {
+                aiAnalysis: finalSummary,
+                riskScore: newRiskScore
+            });
+
+            toast.success(`AI Tactical Analysis Complete! Score: ${newRiskScore}/10`, { id: toastId });
+        } catch (error) {
+            console.error("AI Analysis failed:", error);
+            toast.error(`Analysis Failed: ${error.message}`, { id: toastId, duration: 5000 });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     if (!incident) return null;
 
@@ -97,7 +198,7 @@ function IncidentDetailsModal({ incident, onClose }) {
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">SOS Incident Report #{incident.id.substring(0, 8).toUpperCase()}</h2>
                         <div className="flex items-center gap-3 mt-1 text-sm text-slate-500 font-medium">
-                            <span className={`px-2 py-0.5 rounded-md \${incident.status === 'Active' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            <span className={`px-2 py-0.5 rounded-md ${incident.status === 'Active' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                 {incident.status}
                             </span>
                             <span>•</span>
@@ -150,7 +251,7 @@ function IncidentDetailsModal({ incident, onClose }) {
                                 <p className="text-sm text-slate-500 font-medium mb-1">Assessed Risk Score</p>
                                 <div className="flex items-center gap-2">
                                     <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-red-500" style={{ width: `\${(incident.riskScore / 10) * 100}%` }}></div>
+                                        <div className="h-full bg-red-500 transition-all duration-1000" style={{ width: `${(incident.riskScore / 10) * 100}%` }}></div>
                                     </div>
                                     <p className="text-slate-800 font-bold">{incident.riskScore} / 10</p>
                                 </div>
@@ -196,15 +297,28 @@ function IncidentDetailsModal({ incident, onClose }) {
 
                     {/* Investigation Evidence Section */}
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            Digital Evidence Room
-                            {loading && <Loader2 size={16} className="animate-spin text-blue-500" />}
-                            {!loading && evidence.length > 0 && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold ml-2">
-                                    {evidence.length} FILES
-                                </span>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                Digital Evidence Room
+                                {loading && <Loader2 size={16} className="animate-spin text-blue-500" />}
+                                {!loading && evidence.length > 0 && (
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold ml-2">
+                                        {evidence.length} FILES
+                                    </span>
+                                )}
+                            </h3>
+
+                            {!incident.aiAnalysis && (
+                                <button
+                                    onClick={handleAnalyzeEvidence}
+                                    disabled={isAnalyzing}
+                                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-colors"
+                                >
+                                    {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                                    {isAnalyzing ? "ANALYZING EVIDENCE..." : "ANALYZE WITH AI"}
+                                </button>
                             )}
-                        </h3>
+                        </div>
 
                         {!loading && evidence.length === 0 && !incident.evidenceUrl && (
                             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-center">
