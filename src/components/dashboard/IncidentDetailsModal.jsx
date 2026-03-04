@@ -89,7 +89,7 @@ function IncidentDetailsModal({ incident, onClose }) {
 
         try {
             // Hardcoding for Hackathon Live Demo temporarily
-            const apiKey = 'AIzaSyDkJmeE2hCBwn2j5t-F_UL9KqKtCKDDufQ';
+            const apiKey = 'AIzaSyD3hOE8L2affeCpsKrv6HI-s5rEr0A1doE';
             if (!apiKey) {
                 toast.error("VITE_GEMINI_API_KEY is missing from environment variables!", { id: toastId });
                 setIsAnalyzing(false);
