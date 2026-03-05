@@ -85,25 +85,17 @@ function IncidentDetailsModal({ incident, onClose }) {
 
     const handleAnalyzeEvidence = async () => {
         setIsAnalyzing(true);
-        const toastId = toast.loading("Gemini AI is fetching and decrypting media for processing...", { duration: 15000 });
+        const toastId = toast.loading("Groq AI is fetching and decrypting media for processing...", { duration: 15000 });
 
         try {
-            // Hardcoding for Hackathon Live Demo temporarily
-            const apiKey = 'AIzaSyD3hOE8L2affeCpsKrv6HI-s5rEr0A1doE';
-            if (!apiKey) {
-                toast.error("VITE_GEMINI_API_KEY is missing from environment variables!", { id: toastId });
-                setIsAnalyzing(false);
-                return;
-            }
-
-            const { GoogleGenerativeAI } = await import('@google/generative-ai');
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // New Groq API Key provided by user
+            const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
 
             let finalSummary = "";
             let newRiskScore = incident.riskScore || 6;
+            let audioTranscript = "";
 
-            // Filter out placeholder unresolvable URIs to prevent fetch crashing
+            // --- 1. Audio Processing (Whisper) ---
             const rawIncidentAudio = (incident.audioUrl && !incident.audioUrl.startsWith('telegram_file_id:')) ? incident.audioUrl : null;
             const audioUrlToFetch = telegramAudioStream || rawIncidentAudio || (audioClips.length > 0 ? audioClips[0].fileUrl : null);
 
@@ -112,91 +104,116 @@ function IncidentDetailsModal({ incident, onClose }) {
                 setIsAnalyzing(false);
                 return;
             }
+
             if (audioUrlToFetch) {
-                toast.loading(`Gemini AI is transcribing audio and sensing emotional stress...`, { id: toastId });
-
+                toast.loading(`Groq AI (Whisper) is transcribing live SOS audio...`, { id: toastId });
                 try {
-                    // Telegram API natively supports CORS, fetch directly without proxy rewrite
-                    const fetchUrl = audioUrlToFetch;
-
-                    const response = await fetch(fetchUrl);
-                    if (!response.ok) throw new Error("Audio download failed from source");
+                    const response = await fetch(audioUrlToFetch);
+                    if (!response.ok) throw new Error("Audio download failed");
                     const blob = await response.blob();
 
-                    const base64Audio = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            const result = reader.result;
-                            const base64 = result.split(',')[1];
-                            resolve(base64);
-                        };
-                        reader.readAsDataURL(blob);
+                    // Groq expects a File object in FormData
+                    const file = new File([blob], "sos_audio.mp3", { type: 'audio/mp3' });
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("model", "whisper-large-v3");
+
+                    const whisperRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${groqApiKey}` },
+                        body: formData
                     });
 
-                    // Explicit prompt requiring exact format
-                    const prompt = `You are a Police Tactical Dispatch AI analyzing emergency SOS audio.
-Focus on: Voice pitch, screams, distress words ('help', 'bachao', 'chhod', 'police', etc.), background commotion.
-Task 1: Write a short 2-3 sentence summary of the danger level.
-Task 2: MUST END YOUR RESPONSE WITH THE EXACT STRING "RISK_SCORE: [NUMBER]" where [NUMBER] is a risk rating from 1 to 10. (Example: RISK_SCORE: 9)
-Do not format Task 2 with bolding or markdown.`;
-
-                    // We ensure mimeType is always acceptable by Gemini API (it likes mp3, wav, aac)
-                    let forcedMimeType = blob.type;
-                    if (!forcedMimeType || forcedMimeType === 'application/octet-stream') {
-                        forcedMimeType = 'audio/mp3'; // Fallback
+                    const whisperData = await whisperRes.json();
+                    if (whisperData.text) {
+                        audioTranscript = whisperData.text;
+                        console.log("Whisper Transcript:", audioTranscript);
                     }
-
-                    const result = await model.generateContent([
-                        {
-                            inlineData: {
-                                mimeType: forcedMimeType,
-                                data: base64Audio
-                            }
-                        },
-                        prompt
-                    ]);
-
-                    const responseText = result.response.text();
-                    console.log("Gemini Raw Response:", responseText);
-
-                    const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
-                    if (riskMatch) {
-                        newRiskScore = parseInt(riskMatch[1], 10);
-                        // Make sure score is within bounds
-                        if (newRiskScore > 10) newRiskScore = 10;
-                        if (newRiskScore < 1) newRiskScore = 1;
-                    } else {
-                        // Intelligent fallback parsing if it forgot the format
-                        if (responseText.toLowerCase().includes('scream') || responseText.toLowerCase().includes('help')) newRiskScore = 9;
-                        else newRiskScore = 8;
-                    }
-
-                    finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').replace(/\*/g, '').trim();
                 } catch (e) {
-                    console.error("Audio processing failed:", e);
-                    finalSummary = `WARNING: AI audio streaming verification failed. File format might be unsupported or blocked by CORS. However, an audio file stream is present. Manual verification required.`;
-                    newRiskScore = 8;
+                    console.error("Groq Audio processing failed:", e);
+                    audioTranscript = "[Audio transcription failed or no speech detected]";
                 }
-            } else {
-                toast.loading(`Evaluating metadata payload without media streams...`, { id: toastId });
-                const prompt = `You are a Police AI analyzing an SOS incident (no audio/photo provided). Generate a 2 sentence summary instructing dispatchers to try securing the target and verifying the contact. Output "RISK_SCORE: 6" at the end.`;
-                const result = await model.generateContent(prompt);
-
-                const responseText = result.response.text();
-                const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
-                if (riskMatch) newRiskScore = parseInt(riskMatch[1], 10);
-                finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').replace(/\*/g, '').trim();
             }
 
+            // --- 2. Image Processing (Llama Vision) ---
+            toast.loading(`Groq AI (Llama 3.2 Vision) is cross-referencing audio transcript with camera feeds...`, { id: toastId });
+
+            // Helper to fetch image and convert to base64
+            const getBase64Image = async (url) => {
+                if (!url) return null;
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) { return null; }
+            };
+
+            const frontImageB64 = await getBase64Image(incident.evidenceUrl);
+            const rearImageB64 = await getBase64Image(incident.evidenceUrlBack);
+
+            // Construct Groq Vision payload
+            const visionContent = [
+                {
+                    type: "text",
+                    text: `You are a Police Tactical Dispatch AI analyzing an emergency SOS.
+The victim's phone secretly recorded 10s of audio and captured photos from the front/rear cameras.
+Audio Transcript: "${audioTranscript || 'No audio available'}"
+Task: Analyze the photos and transcript. Look for weapons, struggles, or aggressive behavior. Look for panic in the transcript.
+Output a short 2-3 sentence summary of the danger level. 
+You MUST END YOUR RESPONSE WITH EXACTLY "RISK_SCORE: [NUMBER]" where [NUMBER] is 1 to 10. Do not bold it.`
+                }
+            ];
+
+            if (frontImageB64) visionContent.push({ type: "image_url", image_url: { url: frontImageB64 } });
+            if (rearImageB64) visionContent.push({ type: "image_url", image_url: { url: rearImageB64 } });
+
+            const visionRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${groqApiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "llama-3.2-90b-vision-preview",
+                    messages: [{ role: "user", content: visionContent }],
+                    temperature: 0.2,
+                    max_tokens: 500
+                })
+            });
+
+            const visionData = await visionRes.json();
+
+            if (visionData.choices && visionData.choices[0]) {
+                const responseText = visionData.choices[0].message.content;
+                console.log("Groq Vision Response:", responseText);
+
+                const riskMatch = responseText.match(/RISK_SCORE:\s*(\d+)/i);
+                if (riskMatch) {
+                    newRiskScore = parseInt(riskMatch[1], 10);
+                    if (newRiskScore > 10) newRiskScore = 10;
+                    if (newRiskScore < 1) newRiskScore = 1;
+                } else {
+                    newRiskScore = audioTranscript.toLowerCase().includes('help') ? 9 : 8;
+                }
+                finalSummary = responseText.replace(/RISK_SCORE:\s*\d+/i, '').replace(/\*/g, '').trim();
+            } else {
+                throw new Error("Llama Vision returned empty response.");
+            }
+
+            // --- 3. Save to Firebase ---
             const incidentRef = doc(db, 'incidents', incident.id);
             await updateDoc(incidentRef, {
                 aiAnalysis: finalSummary,
                 riskScore: newRiskScore
             });
 
-            toast.success(`AI Tactical Analysis Complete! Score: ${newRiskScore}/10`, { id: toastId });
+            toast.success(`Groq AI Tactical Analysis Complete! Score: ${newRiskScore}/10`, { id: toastId });
         } catch (error) {
-            console.error("AI Analysis failed:", error);
+            console.error("Groq Analysis failed:", error);
             toast.error(`Analysis Failed: ${error.message}`, { id: toastId, duration: 5000 });
         } finally {
             setIsAnalyzing(false);
@@ -308,7 +325,7 @@ Do not format Task 2 with bolding or markdown.`;
                                 <div className="md:col-span-3 mt-2 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">
                                     <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                        GEMINI AI TACTICAL INTELLIGENCE
+                                        GROQ AI TACTICAL INTELLIGENCE
                                     </p>
                                     <p className="text-sm text-slate-300 leading-relaxed">
                                         {incident.aiAnalysis}
