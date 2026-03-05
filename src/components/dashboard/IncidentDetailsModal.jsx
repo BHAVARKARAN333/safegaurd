@@ -155,21 +155,25 @@ function IncidentDetailsModal({ incident, onClose }) {
             const frontImageB64 = await getBase64Image(incident.evidenceUrl);
             const rearImageB64 = await getBase64Image(incident.evidenceUrlBack);
 
-            // Construct Groq Vision payload
-            const visionContent = [
-                {
-                    type: "text",
-                    text: `You are a Police Tactical Dispatch AI analyzing an emergency SOS.
-The victim's phone secretly recorded 10s of audio and captured photos from the front/rear cameras.
-Audio Transcript: "${audioTranscript || 'No audio available'}"
-Task: Analyze the photos and transcript. Look for weapons, struggles, or aggressive behavior. Look for panic in the transcript.
-Output a short 2-3 sentence summary of the danger level. 
-You MUST END YOUR RESPONSE WITH EXACTLY "RISK_SCORE: [NUMBER]" where [NUMBER] is 1 to 10. Do not bold it.`
-                }
-            ];
+            const hasImages = !!(frontImageB64 || rearImageB64);
+            const usedModelName = hasImages ? "llama-3.2-90b-vision-preview" : "llama-3.3-70b-versatile";
 
-            if (frontImageB64) visionContent.push({ type: "image_url", image_url: { url: frontImageB64 } });
-            if (rearImageB64) visionContent.push({ type: "image_url", image_url: { url: rearImageB64 } });
+            const textPrompt = `You are a Police Tactical Dispatch AI analyzing an emergency SOS.
+The victim's phone secretly recorded 10s of audio${hasImages ? ' and captured photos from the front/rear cameras' : ''}.
+Audio Transcript: "${audioTranscript || 'No audio available'}"
+Task: Analyze the ${hasImages ? 'photos and transcript' : 'transcript'}. Look for weapons, struggles, or aggressive behavior. Look for panic in the transcript.
+Output a short 2-3 sentence summary of the danger level. 
+You MUST END YOUR RESPONSE WITH EXACTLY "RISK_SCORE: [NUMBER]" where [NUMBER] is 1 to 10. Do not bold it.`;
+
+            let messagesPayload;
+            if (hasImages) {
+                const visionContent = [{ type: "text", text: textPrompt }];
+                if (frontImageB64) visionContent.push({ type: "image_url", image_url: { url: frontImageB64 } });
+                if (rearImageB64) visionContent.push({ type: "image_url", image_url: { url: rearImageB64 } });
+                messagesPayload = [{ role: "user", content: visionContent }];
+            } else {
+                messagesPayload = [{ role: "user", content: textPrompt }];
+            }
 
             const visionRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -178,14 +182,19 @@ You MUST END YOUR RESPONSE WITH EXACTLY "RISK_SCORE: [NUMBER]" where [NUMBER] is
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "llama-3.2-90b-vision-preview",
-                    messages: [{ role: "user", content: visionContent }],
+                    model: usedModelName,
+                    messages: messagesPayload,
                     temperature: 0.2,
                     max_tokens: 500
                 })
             });
 
             const visionData = await visionRes.json();
+
+            if (!visionRes.ok) {
+                console.error("Groq API Error Response:", visionData);
+                throw new Error(visionData.error?.message || `Groq API Error: ${visionRes.status}`);
+            }
 
             if (visionData.choices && visionData.choices[0]) {
                 const responseText = visionData.choices[0].message.content;
